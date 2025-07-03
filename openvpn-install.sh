@@ -780,16 +780,16 @@ function installOpenVPN() {
 		EASYRSA_CERT_EXPIRE=3650 ./easyrsa --batch build-server-full "$SERVER_NAME" nopass
 		EASYRSA_CRL_DAYS=3650 ./easyrsa gen-crl
 
-		case $TLS_SIG in
-		1)
-			# Generate tls-crypt key
-			openvpn --genkey --secret /etc/openvpn/tls-crypt.key
-			;;
-		2)
-			# Generate tls-auth key
-			openvpn --genkey --secret /etc/openvpn/tls-auth.key
-			;;
-		esac
+#		case $TLS_SIG in
+#		1)
+#			# Generate tls-crypt key
+#			openvpn --genkey --secret /etc/openvpn/tls-crypt.key
+#			;;
+#		2)
+#			# Generate tls-auth key
+#			openvpn --genkey --secret /etc/openvpn/tls-auth.key
+#			;;
+#		esac
 	else
 		# If easy-rsa is already installed, grab the generated SERVER_NAME
 		# for client configs
@@ -821,7 +821,7 @@ persist-key
 persist-tun
 keepalive 10 120
 topology subnet
-server 10.8.0.0 255.255.255.0
+server 10.8.0.0 255.255.240.0
 ifconfig-pool-persist ipp.txt" >>/etc/openvpn/server.conf
 
 	# DNS resolvers
@@ -917,20 +917,19 @@ push "redirect-gateway ipv6"' >>/etc/openvpn/server.conf
 		echo "dh dh.pem" >>/etc/openvpn/server.conf
 	fi
 
-	case $TLS_SIG in
-	1)
-		echo "tls-crypt tls-crypt.key" >>/etc/openvpn/server.conf
-		;;
-	2)
-		echo "tls-auth tls-auth.key 0" >>/etc/openvpn/server.conf
-		;;
-	esac
+#	case $TLS_SIG in
+#	1)
+#		echo "tls-crypt tls-crypt.key" >>/etc/openvpn/server.conf
+#		;;
+#	2)
+#		echo "tls-auth tls-auth.key 0" >>/etc/openvpn/server.conf
+#		;;
+#	esac
 
-	echo "crl-verify crl.pem
+	echo "
 ca ca.crt
 cert $SERVER_NAME.crt
 key $SERVER_NAME.key
-auth $HMAC_ALG
 cipher $CIPHER
 ncp-ciphers $CIPHER
 tls-server
@@ -1003,7 +1002,7 @@ verb 3" >>/etc/openvpn/server.conf
 
 	# Script to add rules
 	echo "#!/bin/sh
-iptables -t nat -I POSTROUTING 1 -s 10.8.0.0/24 -o $NIC -j MASQUERADE
+iptables -t nat -I POSTROUTING 1 -s 10.8.0.0/20 -o $NIC -j MASQUERADE
 iptables -I INPUT 1 -i tun0 -j ACCEPT
 iptables -I FORWARD 1 -i $NIC -o tun0 -j ACCEPT
 iptables -I FORWARD 1 -i tun0 -o $NIC -j ACCEPT
@@ -1019,7 +1018,7 @@ ip6tables -I INPUT 1 -i $NIC -p $PROTOCOL --dport $PORT -j ACCEPT" >>/etc/iptabl
 
 	# Script to remove rules
 	echo "#!/bin/sh
-iptables -t nat -D POSTROUTING -s 10.8.0.0/24 -o $NIC -j MASQUERADE
+iptables -t nat -D POSTROUTING -s 10.8.0.0/20 -o $NIC -j MASQUERADE
 iptables -D INPUT -i tun0 -j ACCEPT
 iptables -D FORWARD -i $NIC -o tun0 -j ACCEPT
 iptables -D FORWARD -i tun0 -o $NIC -j ACCEPT
@@ -1077,8 +1076,6 @@ persist-key
 persist-tun
 remote-cert-tls server
 verify-x509-name $SERVER_NAME name
-auth $HMAC_ALG
-auth-nocache
 cipher $CIPHER
 tls-client
 tls-version-min 1.2
@@ -1152,11 +1149,11 @@ function newClient() {
 	fi
 
 	# Determine if we use tls-auth or tls-crypt
-	if grep -qs "^tls-crypt" /etc/openvpn/server.conf; then
-		TLS_SIG="1"
-	elif grep -qs "^tls-auth" /etc/openvpn/server.conf; then
-		TLS_SIG="2"
-	fi
+#	if grep -qs "^tls-crypt" /etc/openvpn/server.conf; then
+#		TLS_SIG="1"
+#	elif grep -qs "^tls-auth" /etc/openvpn/server.conf; then
+#		TLS_SIG="2"
+#	fi
 
 	# Generates the custom client.ovpn
 	cp /etc/openvpn/client-template.txt "$homeDir/$CLIENT.ovpn"
@@ -1173,19 +1170,19 @@ function newClient() {
 		cat "/etc/openvpn/easy-rsa/pki/private/$CLIENT.key"
 		echo "</key>"
 
-		case $TLS_SIG in
-		1)
-			echo "<tls-crypt>"
-			cat /etc/openvpn/tls-crypt.key
-			echo "</tls-crypt>"
-			;;
-		2)
-			echo "key-direction 1"
-			echo "<tls-auth>"
-			cat /etc/openvpn/tls-auth.key
-			echo "</tls-auth>"
-			;;
-		esac
+#		case $TLS_SIG in
+#		1)
+#			echo "<tls-crypt>"
+#			cat /etc/openvpn/tls-crypt.key
+#			echo "</tls-crypt>"
+#			;;
+#		2)
+#			echo "key-direction 1"
+#			echo "<tls-auth>"
+#			cat /etc/openvpn/tls-auth.key
+#			echo "</tls-auth>"
+#			;;
+#		esac
 	} >>"$homeDir/$CLIENT.ovpn"
 
 	echo ""
